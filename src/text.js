@@ -1,10 +1,10 @@
 'strict mode';
 
-const textHeight = 32;
+const textHeight = 28;
 const textCanvas = document.createElement('canvas');
 //document.body.appendChild(textCanvas);
 //textCanvas.style.position = "fixed";
-const maxWidth = textCanvas.width = textCanvas.height = 1024;
+const maxWidth = textCanvas.width = textCanvas.height = 512;
 const ctx = textCanvas.getContext('2d');
 ctx.mozImageSmoothingEnabled = false;
 ctx.webkitImageSmoothingEnabled = false;
@@ -79,7 +79,7 @@ module.exports = {
         
             void main () {
                 float c = texture2D(tex, uv).r;
-                gl_FragColor = vec4(0,0,0, c);
+                gl_FragColor = vec4(0.16, 0.105, 0.065, c);
             }`,
             vert: `
             precision highp float;

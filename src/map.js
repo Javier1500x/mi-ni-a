@@ -5,6 +5,9 @@ const cellSize = 8; // Size of the rooms
 const mapHeight = 7; // Height of the walls
 const wallThickness = 0.25; // Wall thickness
 const wallRemoval = 0.5; // Random wall removal proportion
+const paintingSpacing = 2.8;
+const spawn = [2, 2];
+const spawnView = [Math.SQRT1_2, Math.SQRT1_2];
 
 const transform = (a, r, tx, ty, o = 1) => a.map((v) => [(o * v[r] + tx) / 2, (o * v[1 - r] + ty) / 2]);
 
@@ -170,6 +173,44 @@ function reorderPlacements(placements, r) {
 	return placements;
 }
 
+function splitPlacements(placements) {
+	return placements.flatMap(([a, b]) => {
+		const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+		const count = Math.max(1, Math.round(len / paintingSpacing));
+		return Array.from({ length: count }, (_, i) => {
+			const start = i / count;
+			const end = (i + 1) / count;
+			return [
+				[a[0] + (b[0] - a[0]) * start, a[1] + (b[1] - a[1]) * start],
+				[a[0] + (b[0] - a[0]) * end, a[1] + (b[1] - a[1]) * end]
+			];
+		});
+	});
+}
+
+function findWelcomePlacement(placements) {
+	const [ox, oy] = spawn;
+	const [dx, dy] = spawnView;
+	let bestIndex = 0;
+	let bestDist = Infinity;
+	placements.forEach(([[ax, ay], [bx, by]], index) => {
+		const ex = bx - ax;
+		const ey = by - ay;
+		const det = dx * ey - dy * ex;
+		if (Math.abs(det) < 1e-6) return;
+		const fx = ax - ox;
+		const fy = ay - oy;
+		const dist = (fx * ey - fy * ex) / det;
+		const along = (fx * dy - fy * dx) / det;
+		if (dist < 3 || dist > 16 || along < -0.05 || along > 1.05) return;
+		if (dist < bestDist) {
+			bestDist = dist;
+			bestIndex = index;
+		}
+	});
+	return bestIndex;
+}
+
 function genGrid(segments, n, r) {
 	console.time('gen grid');
 	let splittedSegments = splitSegments(segments, r);
@@ -203,6 +244,9 @@ function genGrid(segments, n, r) {
 	// Ignore short segments for painting placement
 	placements = placements.filter(([[ax, ay], [bx, by]]) => Math.hypot(ax - bx, ay - by) > 1);
 	placements = reorderPlacements(placements, r);
+	placements = splitPlacements(placements);
+	const welcomeIndex = findWelcomePlacement(placements);
+	placements = placements.slice(welcomeIndex).concat(placements.slice(0, welcomeIndex));
 	const areas = placements.map(place => [
         (Math.round((place[0][0] + place[1][0]) / 2 / r + 0.5) - 0.5) * r,
         (Math.round((place[0][1] + place[1][1]) / 2 / r + 0.5) - 0.5) * r

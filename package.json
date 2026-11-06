@@ -3,8 +3,8 @@
 	"description": "Explore an art gallery in your browser.",
 	"version": "1.0.0",
 	"scripts": {
-		"start": "budo src/index.js",
-		"build": "browserify -p tinyify src/index.js | htmlify base.html > build.html",
+		"start": "budo src/index.js --title \"Un museo para ti\"",
+		"build": "browserify -p tinyify src/index.js | htmlify base.html > build.html && node scripts/prepare-site.js",
 		"genList": "node images/generateList.js",
 		"prestart": "npm run genList",
 		"prebuild": "npm run genList"

@@ -21,6 +21,8 @@ if(showStats) {
 	document.body.appendChild( stats.dom );
 }
 
+require('./ui')();
+
 let regl, map, drawMap, placement, drawPainting, fps;
 
 regl = require('regl')({
@@ -37,11 +39,17 @@ regl = require('regl')({
 });
 
 map = require('./map')();
+const firstPainting = map.placements[0];
+const firstMid = [
+	(firstPainting[0][0] + firstPainting[1][0]) / 2,
+	(firstPainting[0][1] + firstPainting[1][1]) / 2
+];
+const startAngle = Math.atan2(firstMid[0] - 2, -(firstMid[1] - 2));
 const mesh = require('./mesh');
 drawMap = mesh(regl, map, useReflexion);
 placement = require('./placement')(regl, map);
 drawPainting = require('./painting')(regl);
-fps = require('./fps')(map, fovY);
+fps = require('./fps')(map, fovY, startAngle);
 
 const context = regl({
 	cull: {

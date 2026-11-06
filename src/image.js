@@ -16,8 +16,9 @@ function dynamicQual(quality) {
 	return quality;
 }
 
+const isMobile = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 const resizeCanvas = document.createElement('canvas');
-resizeCanvas.width = resizeCanvas.height = 2048;
+resizeCanvas.width = resizeCanvas.height = isMobile ? 512 : 1024;
 const ctx = resizeCanvas.getContext('2d');
 ctx.mozImageSmoothingEnabled = false;
 ctx.webkitImageSmoothingEnabled = false;
@@ -66,20 +67,36 @@ module.exports = {
 	fetch: (regl, count = 10, res = "low", cbOne, cbAll) => {
 		const from = Object.keys(paintingCache).length;
 		dataAccess.fetchList(from, count).then(paintings => {
-			count = paintings.length;
-			paintings.map(p => {
+			if (!paintings.length) {
+				cbAll();
+				return;
+			}
+			const loaded = new Array(paintings.length);
+			let next = 0;
+			const flush = () => {
+				while (next < paintings.length && loaded[next] !== undefined) {
+					if (loaded[next])
+						cbOne(loaded[next]);
+					next++;
+				}
+				if (next === paintings.length)
+					cbAll();
+			};
+			paintings.forEach((p, index) => {
 				if (paintingCache[p.image_id]) {
-					if (--count === 0)
-						cbAll();
+					loaded[index] = null;
+					flush();
 					return;
 				}
 				paintingCache[p.image_id] = p;
 				loadImage(regl, p, res).then(([tex, textGen, aspect]) => {
-					cbOne({ ...p, tex, textGen, aspect });
-					if (--count === 0)
-						cbAll();
+					loaded[index] = { ...p, tex, textGen, aspect };
+					flush();
 				});
-			})
+			});
+		}).catch(e => {
+			console.error(e);
+			cbAll();
 		});
 	},
 	load: (regl, p, res = "low") => {

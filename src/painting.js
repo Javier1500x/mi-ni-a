@@ -7,7 +7,7 @@ module.exports = (regl) => {
 	const painting =
 		regl({
 			frag: `
-	precision lowp float;
+	precision mediump float;
 	uniform sampler2D tex;
 	varying vec3 uv;
 
@@ -31,10 +31,30 @@ module.exports = (regl) => {
 		float frontMask = smoothstep(0.9, 1.0, uv.z);
 		float paintingMask = step(0.001, uv.z);
 		float shadowAlpha = boxShadow(vec2(.5), vec2(.7), abs(uv.xy-vec2(.5)), 0.02);
-		float wrapping = 0.005 * sign(uv.x-.5) * (1.-uv.z);
-		float sideShading = pow(uv.z/4.0, 0.1);
-		vec3 col = texture2D(tex, uv.xy - vec2(wrapping, 0.)).rgb;
-		col *= mix(sideShading, 1., frontMask);
+
+		float frameWidth = 0.042;
+		float matWidth = 0.016;
+		vec2 edge = min(uv.xy, 1.0 - uv.xy);
+		float inset = frameWidth + matWidth;
+
+		vec2 photoUv = (uv.xy - inset) / (1.0 - 2.0 * inset);
+		vec3 photo = texture2D(tex, clamp(photoUv, 0.0, 1.0)).rgb;
+
+		float bevel = clamp(0.5 + 0.5 * (uv.y - uv.x), 0.0, 1.0);
+		vec3 gold = mix(vec3(0.34, 0.20, 0.05), vec3(0.96, 0.79, 0.40), bevel);
+		vec3 matColor = vec3(0.94, 0.90, 0.81);
+		float innerEdge = min(edge.x, edge.y);
+		float seam = smoothstep(0.004, 0.0, abs(innerEdge - frameWidth));
+
+		vec3 front = photo;
+		if (innerEdge < inset)
+			front = matColor;
+		if (innerEdge < frameWidth)
+			front = gold;
+		front = mix(front, vec3(0.22, 0.13, 0.03), seam * 0.75);
+
+		float sideShading = pow(uv.z / 4.0, 0.1);
+		vec3 col = mix(gold * sideShading, front, frontMask);
 		gl_FragColor = mix(vec4(0.,0.,0.,shadowAlpha), vec4(col,1.), paintingMask);
 	}`,
 			vert: `

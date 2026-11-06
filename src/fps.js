@@ -24,6 +24,7 @@ const yLimitTouch = 5;
 const touchDistLimit = 40;
 const rayStep = 4;
 const tpDuration = 1;
+const isCoarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
 const sdLine = (p, a, b, tmp1, tmp2) => {
 	const pa = vec3.sub(tmp1, p, a);
@@ -61,9 +62,9 @@ const lerp = (x, a, b) => (1 - x) * a + x * b;
 const easeInOutQuad = x =>
 	x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
 
-module.exports = function ({getGridSegments, getGridParts}, fovY) {
-	var mouse = [0, Math.PI * 3 / 4];
-	var fmouse = [0, Math.PI * 3 / 4];
+module.exports = function ({getGridSegments, getGridParts}, fovY, startAngle = Math.PI * 3 / 4) {
+	var mouse = [0, startAngle];
+	var fmouse = [0, startAngle];
 	var dir = [0, 0, 0];
 	var pos = [2, height, 2];
 	var forward = [0.707, 0, 0.707], up = [0, 1, 0];
@@ -87,18 +88,30 @@ module.exports = function ({getGridSegments, getGridParts}, fovY) {
 	};
 
 	// Mouse input
-	let pointer = lock(document.body);
-	pointer.on('attain', (movements) => {
-		movements.on('data', (move) => {
-			orientCamera(move.dx, move.dy, mouseSensibility);
+	if (!isCoarsePointer && document.body.requestPointerLock) {
+		const requestPointerLock = document.body.requestPointerLock;
+		document.body.requestPointerLock = function () {
+			const result = requestPointerLock.apply(this, arguments);
+			if (result && result.catch) result.catch(() => {});
+			return result;
+		};
+	}
+	let pointer = isCoarsePointer ? false : lock(document.body);
+	if (pointer) {
+		pointer.on('error', () => {});
+		pointer.on('attain', (movements) => {
+			movements.on('data', (move) => {
+				orientCamera(move.dx, move.dy, mouseSensibility);
+			});
 		});
-	});
+	}
 
 	// Touch input
 	let firstTouch = false;
 	let lastTouch = false;
 	let touchTimestamp = 0;
 	const handleTouch = (e) => {
+		if (e.target && e.target.closest && e.target.closest('[data-ui]')) return;
 		e.preventDefault();
 		if(pointer) {
 			pointer.destroy();

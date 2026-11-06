@@ -2,9 +2,10 @@
 const texture = require('./image');
 const mat4 = require('gl-mat4');
 
-const renderDist = 20;
-const loadDist = 20;
-const unloadDist = 40;
+const isMobile = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+const renderDist = isMobile ? 16 : 24;
+const loadDist = isMobile ? 16 : 24;
+const unloadDist = isMobile ? 32 : 48;
 const fovxMargin = Math.PI/32;
 
 const dynamicResPeriod = 3000;
@@ -65,7 +66,7 @@ module.exports = (regl, {placements, getAreaIndex}) => {
         mat4.scale(model, model, scale);
         mat4.rotateY(model, model, -angle);
         const textmodel = [];
-        mat4.fromTranslation(textmodel, [pos[0], 1.7 - globalScale, pos[2]]);
+        mat4.fromTranslation(textmodel, [pos[0], 1.85 - globalScale, pos[2]]);
         mat4.scale(textmodel, textmodel, [2,2,2]);
         mat4.rotateY(textmodel, textmodel, -angle);
         batch.push({ ...p, vseg, angle, model, textmodel, text, width, textGen:null });

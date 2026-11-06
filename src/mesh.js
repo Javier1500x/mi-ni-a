@@ -17,29 +17,40 @@ module.exports = (regl, data, useReflexion) => {
     loadTexture(floorTexture, "res/floor.jpg");
     return regl({
         frag: `
-        precision lowp float;
+        precision mediump float;
         varying vec3 v_pos, v_relativepos, v_normal;
         uniform sampler2D wallTexture;
         uniform sampler2D floorTexture;
 
-        vec3 hue2rgb(float h) {
-            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-            vec3 p = abs(fract(vec3(h) + K.xyz) * 6.0 - K.www);
-            return mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), 0.08);
-        }
-
         void main() {
-            vec3 totalLight = texture2D(wallTexture, vec2(v_pos.x + v_pos.z, 7.0-v_pos.y)/8.0).rgb;
+            float lightMap = texture2D(wallTexture, vec2(v_pos.x + v_pos.z, 7.0-v_pos.y)/8.0).r;
             float dist = length(v_relativepos);
-            totalLight = mix(totalLight, vec3(90.0,92.0,95.0)/255.0, step(6.99, v_pos.y));
-            totalLight *= mix(0.7, 1.0, smoothstep(0.1, 0.12, v_pos.y));
-            totalLight *= abs(v_normal.x)/64.0 + 1.0;
-            if(v_normal.y > 0.0) {
-                totalLight = 0.47+0.1*texture2D(floorTexture, v_pos.xz / 8.0).rgb;
+            vec3 color;
+
+            if (v_normal.y < -0.5) {
+                color = vec3(0.10, 0.07, 0.075);
+                vec2 cell = abs(fract(v_pos.xz / 8.0) - 0.5) * 8.0;
+                color += vec3(0.30, 0.23, 0.15) * smoothstep(1.8, 0.2, length(cell));
+            } else if (v_normal.y > 0.5) {
+                float tile = texture2D(floorTexture, v_pos.xz / 8.0).r;
+                color = vec3(0.55, 0.47, 0.38) * (0.72 + 0.55 * tile);
+            } else {
+                float warm = 0.5 + 0.5 * sin((v_pos.x + v_pos.z) * 0.012);
+                vec3 tint = mix(vec3(1.0, 0.96, 0.91), vec3(1.0, 0.88, 0.86), warm * 0.4);
+                color = tint * (0.46 + 0.66 * lightMap);
+                color *= mix(0.84, 1.04, smoothstep(0.0, 4.5, v_pos.y));
+                if (v_pos.y < 0.30) {
+                    color = vec3(0.17, 0.065, 0.085) * (0.75 + 0.4 * lightMap);
+                } else if (v_pos.y < 0.34) {
+                    color = vec3(0.73, 0.57, 0.28);
+                }
+                if (v_pos.y > 6.78) {
+                    color = vec3(0.73, 0.57, 0.28);
+                }
             }
-            totalLight *= (0.5 + 0.5*hue2rgb(0.5 + (v_pos.x + v_pos.z) / 160.0)); //color variation
+
             float alpha = .98+smoothstep(150.,0.,dist)-v_normal.y; // reflexion
-            gl_FragColor = vec4(totalLight, ${useReflexion ? "alpha" : "1.0"});
+            gl_FragColor = vec4(color, ${useReflexion ? "alpha" : "1.0"});
         }`,
 
         vert: `
